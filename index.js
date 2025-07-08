@@ -1,31 +1,31 @@
-require('dotenv').config();
-console.log('MONGODB_URI from .env:', process.env.MONGODB_URI);
+require('dotenv').config()
+console.log('MONGODB_URI from .env:', process.env.MONGODB_URI)
 
-const express = require('express');
-const mongoose = require('mongoose');
-const cors = require('cors');
-const morgan = require('morgan');
-const path = require('path');
-const Person = require('./models/person');
+const express = require('express')
+const mongoose = require('mongoose')
+const cors = require('cors')
+const morgan = require('morgan')
+const path = require('path')
+const Person = require('./models/person')
 
-const app = express();
+const app = express()
 
 // MongoDB connection
-mongoose.set('strictQuery', false);
+mongoose.set('strictQuery', false)
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => {
-    console.log('connected to MongoDB');
+    console.log('connected to MongoDB')
   })
   .catch((error) => {
-    console.error('error connecting to MongoDB:', error.message);
-  });
+    console.error('error connecting to MongoDB:', error.message)
+  })
 
 // Middleware
-app.use(cors());
-app.use(express.json());
-app.use(express.static(path.join(__dirname, 'dist')));
+app.use(cors())
+app.use(express.json())
+app.use(express.static(path.join(__dirname, 'dist')))
 
-morgan.token('body', (req) => JSON.stringify(req.body));
+morgan.token('body', (req) => JSON.stringify(req.body))
 app.use(morgan((tokens, req, res) => {
   const log = [
     tokens.method(req, res),
@@ -33,62 +33,62 @@ app.use(morgan((tokens, req, res) => {
     tokens.status(req, res),
     tokens.res(req, res, 'content-length'), '-',
     tokens['response-time'](req, res), 'ms'
-  ];
+  ]
   if (req.method === 'POST') {
-    log.push(tokens.body(req, res));
+    log.push(tokens.body(req, res))
   }
-  return log.join(' ');
-}));
+  return log.join(' ')
+}))
 
 // Routes
 app.get('/info', async (req, res, next) => {
   try {
-    const count = await Person.countDocuments({});
-    const time = new Date();
-    res.send(`<p>Phonebook has info for ${count} people</p><p>${time}</p>`);
+    const count = await Person.countDocuments({})
+    const time = new Date()
+    res.send(`<p>Phonebook has info for ${count} people</p><p>${time}</p>`)
   } catch (error) {
-    next(error);
+    next(error)
   }
-});
+})
 
 app.get('/api/persons', (req, res, next) => {
   Person.find({})
     .then(persons => res.json(persons))
-    .catch(error => next(error));
-});
+    .catch(error => next(error))
+})
 
 app.get('/api/persons/:id', (req, res, next) => {
   Person.findById(req.params.id)
     .then(person => {
-      if (person) res.json(person);
-      else res.status(404).end();
+      if (person) res.json(person)
+      else res.status(404).end()
     })
-    .catch(error => next(error));
-});
+    .catch(error => next(error))
+})
 
 app.post('/api/persons', (req, res, next) => {
-  const { name, number } = req.body;
+  const { name, number } = req.body
   if (!name || !number) {
-    return res.status(400).json({ error: 'name or number missing' });
+    return res.status(400).json({ error: 'name or number missing' })
   }
 
-  const person = new Person({ name, number });
+  const person = new Person({ name, number })
   person.save()
     .then(savedPerson => res.json(savedPerson))
-    .catch(error => next(error));
-});
+    .catch(error => next(error))
+})
 
 app.delete('/api/persons/:id', (req, res, next) => {
   Person.findByIdAndRemove(req.params.id)
     .then(() => res.status(204).end())
-    .catch(error => next(error));
-});
+    .catch(error => next(error))
+})
 
 app.put('/api/persons/:id', (req, res, next) => {
-  const { number } = req.body;
+  const { number } = req.body
 
   if (!number) {
-    return res.status(400).json({ error: 'number missing' });
+    return res.status(400).json({ error: 'number missing' })
   }
 
   Person.findByIdAndUpdate(
@@ -98,31 +98,35 @@ app.put('/api/persons/:id', (req, res, next) => {
   )
     .then(updatedPerson => {
       if (updatedPerson) {
-        res.json(updatedPerson);
+        res.json(updatedPerson)
       } else {
-        res.status(404).end();
+        res.status(404).end()
       }
     })
-    .catch(error => next(error));
-});
+    .catch(error => next(error))
+})
 
-// Error handling middleware
+
 const errorHandler = (error, request, response, next) => {
-  console.error(error.message);
+  console.error(error.message)
 
   if (error.name === 'CastError') {
-    return response.status(400).send({ error: 'malformatted id' });
+    return response.status(400).send({ error: 'malformatted id' })
+  } else if (error.name === 'ValidationError') {
+    return response.status(400).json({ error: error.message })
   }
 
-  next(error);
-};
+  next(error)
+}
 
-app.use(errorHandler);
 
-// Start the server
-const PORT = process.env.PORT || 3001;
+app.use(errorHandler)
+
+// Start server
+const PORT = process.env.PORT || 3001
 app.listen(PORT, () => {
-  console.log(`Server phonebook running on port ${PORT}`);
-});
+  console.log(`Server phonebook running on port ${PORT}`)
+})
+
 
 
